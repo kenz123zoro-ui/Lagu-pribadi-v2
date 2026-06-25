@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MusikKu Pro</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1DB954">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:#121212;color:#fff;padding-bottom:90px}
+header{padding:20px;background:linear-gradient(135deg,#1DB954,#1ed760);position:sticky;top:0;z-index:20}
+header h1{font-size:24px}
+.headerBtn{background:#fff;color:#1DB954;border:none;padding:10px 16px;border-radius:20px;font-weight:bold;margin:10px 5px 0 0;font-size:14px}
+.headerBtn:active{transform:scale(0.95)}
+input[type="file"]{display:none}
+#searchBox{width:calc(100% - 30px);margin:0 15px 10px 15px;padding:10px;background:#282828;border:1px solid #535353;border-radius:20px;color:#fff}
+#tabs{display:flex;gap:8px;padding:0 15px 10px 15px;overflow-x:auto}
+.tab{padding:8px 16px;background:#282828;border-radius:20px;white-space:nowrap;font-size:14px;border:2px solid transparent;cursor:pointer}
+.tab.active{background:#1DB954;border-color:#1ed760;font-weight:bold}
+#songList{padding:15px}
+.song{display:flex;align-items:center;padding:12px;background:#181818;border-radius:8px;margin-bottom:10px;gap:12px;position:relative}
+.song:active{background:#282828}
+.song img{width:50px;height:50px;border-radius:6px;object-fit:cover;background:#333}
+.songInfo{flex:1;overflow:hidden;cursor:pointer}
+.songInfo h3{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.songInfo p{font-size:13px;color:#b3b3b3}
+.songMenu{background:none;border:none;color:#b3b3b3;font-size:20px;cursor:pointer;padding:5px}
+.del{background:#ff4444;border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-weight:bold;cursor:pointer}
+#player{position:fixed;bottom:0;left:0;right:0;background:#181818;border-top:1px solid #282828;padding:10px;z-index:30}
+#progressBar{width:100%;height:4px;background:#535353;border-radius:2px;margin:8px 0;cursor:pointer}
+#progress{height:100%;background:#1DB954;border-radius:2px;width:0%;transition:0.1s}
+#playerInfo{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+#playerInfo img{width:45px;height:45px;border-radius:6px;background:#333;cursor:pointer}
+#playerText{flex:1;overflow:hidden}
+#playerText h4{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#playerText p{font-size:12px;color:#b3b3b3}
+#controls{display:flex;justify-content:center;align-items:center;gap:20px}
+.ctrlBtn{background:none;border:none;color:#fff;font-size:26px;cursor:pointer}
+.ctrlBtn:active{transform:scale(0.9);color:#1DB954}
+.ctrlBtn.active{color:#1DB954}
+#playBtn{font-size:40px}
+#time{display:flex;justify-content:space-between;font-size:11px;color:#b3b3b3;margin-top:4px}
+#empty{text-align:center;padding:40px;color:#b3b3b3}
+#miniMode{position:fixed;top:10px;right:10px;background:#1DB954;border:none;color:#fff;padding:8px 12px;border-radius:20px;font-size:12px;z-index:40;cursor:pointer}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;z-index:50}
+.modalBox{background:#282828;padding:20px;border-radius:12px;width:85%;max-width:350px;max-height:80vh;overflow-y:auto}
+.modalBox h3{margin-bottom:15px}
+.modalBox input,.modalBox textarea,.modalBox select{width:100%;padding:10px;background:#121212;border:1px solid #535353;border-radius:6px;color:#fff;margin-bottom:15px;font-family:sans-serif}
+.modalBox textarea{height:120px;resize:none}
+.modalBox button{padding:10px 20px;border:none;border-radius:6px;font-weight:bold;margin-right:8px;cursor:pointer}
+.modalSave{background:#1DB954;color:#fff}
+.modalCancel{background:#535353;color:#fff}
+.contextMenu{position:absolute;right:10px;top:50px;background:#282828;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5);z-index:10;display:none}
+.contextMenu button{display:block;width:100%;padding:12px 20px;background:none;border:none;color:#fff;text-align:left;cursor:pointer}
+.contextMenu button:active{background:#1DB954}
+#eqContainer{padding:15px 0}
+.eqSlider{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.eqSlider label{width:40px;font-size:12px}
+.eqSlider input{flex:1}
+.eqSlider span{width:35px;text-align:right;font-size:12px;color:#1DB954}
+#lyricsView{white-space:pre-wrap;line-height:1.8;text-align:center;padding:20px 0;color:#b3b3b3}
+</style>
+</head>
+<body>
+<header>
+  <h1>MusikKu Pro</h1>
+  <button class="headerBtn" id="addMusicBtn">+ Musik</button>
+  <button class="headerBtn" id="addPlaylistBtn">+ Playlist</button>
+  <button class="headerBtn" id="eqBtn">🎚️ EQ</button>
+  <input type="file" id="fileInput" accept="audio/*" multiple>
+</header>
+
+<button id="miniMode">Mode Game</button>
+<input type="text" id="searchBox" placeholder="🔍 Cari lagu...">
+<div id="tabs"></div>
+<div id="songList"><div id="empty">Upload MP3 dari HP lu bang.</div></div>
+
+<div id="player" style="display:none">
+  <div id="playerInfo">
+    <img id="playerCover" src="">
+    <div id="playerText">
+      <h4 id="playerTitle">Tidak ada musik</h4>
+      <p id="playerArtist">MusikKu Pro</p>
+    </div>
+  </div>
+  <div id="progressBar"><div id="progress"></div></div>
+  <div id="time"><span id="currentTime">0:00</span><span id="duration">0:00</span></div>
+  <div id="controls">
+    <button class="ctrlBtn" id="shuffleBtn" title="Shuffle">🔀</button>
+    <button class="ctrlBtn" id="prevBtn">⏮</button>
+    <button class="ctrlBtn" id="playBtn">▶️</button>
+    <button class="ctrlBtn" id="nextBtn">⏭</button>
+    <button class="ctrlBtn" id="loopBtn" title="Repeat Off">🔁</button>
+  </div>
+</div>
+
+<!-- Modal Playlist Baru -->
+<div id="playlistModal" class="modal">
+  <div class="modalBox">
+    <h3>Nama Playlist Baru</h3>
+    <input type="text" id="playlistName" placeholder="Contoh: Musik Game">
+    <button id="playlistSave" class="modalSave">Simpan</button>
+    <button id="playlistCancel" class="modalCancel">Batal</button>
+  </div>
+</div>
+
+<!-- Modal Pindah Playlist -->
+<div id="moveModal" class="modal">
+  <div class="modalBox">
+    <h3>Pindah ke Playlist</h3>
+    <select id="movePlaylistSelect"></select>
+    <button id="moveSave" class="modalSave">Pindah</button>
+    <button id="moveCancel" class="modalCancel">Batal</button>
+  </div>
+</div>
+
+<!-- Modal Lirik -->
+<div id="lyricsModal" class="modal">
+  <div class="modalBox">
+    <h3 id="lyricsTitle">Lirik Lagu</h3>
+    <div id="lyricsView">Belum ada lirik</div>
+    <textarea id="lyricsEdit" style="display:none" placeholder="Paste lirik disini..."></textarea>
+    <button id="lyricsEditBtn" class="modalSave">Edit Lirik</button>
+    <button id="lyricsSaveBtn" class="modalSave" style="display:none">Simpan</button>
+    <button id="lyricsCloseBtn" class="modalCancel">Tutup</button>
+  </div>
+</div>
+
+<!-- Modal Equalizer -->
+<div id="eqModal" class="modal">
+  <div class="modalBox">
+    <h3>Equalizer 5-Band</h3>
+    <div id="eqContainer">
+      <div class="eqSlider"><label>60Hz</label><input type="range" min="-12" max="12" value="0" id="eq60"><span>0dB</span></div>
+      <div class="eqSlider"><label>230Hz</label><input type="range" min="-12" max="12" value="0" id="eq230"><span>0dB</span></div>
+      <div class="eqSlider"><label>910Hz</label><input type="range" min="-12" max="12" value="0" id="eq910"><span>0dB</span></div>
+      <div class="eqSlider"><label>4kHz</label><input type="range" min="-12" max="12" value="0" id="eq4k"><span>0dB</span></div>
+      <div class="eqSlider"><label>14kHz</label><input type="range" min="-12" max="12" value="0" id="eq14k"><span>0dB</span></div>
+    </div>
+    <button id="eqReset" class="modalCancel">Reset</button>
+    <button id="eqClose" class="modalSave">Tutup</button>
+  </div>
+</div>
+
+<audio id="audio" preload="metadata" crossorigin="anonymous"></audio>
+
+<script>
+let songs=JSON.parse(localStorage.getItem('musikku_songs')||'[]');
+let playlists=JSON.parse(localStorage.getItem('musikku_playlists')||'[{"id":"all","name":"Semua Musik"}]');
+let currentPlaylist='all',currentIndex=0,isPlaying=false,repeatMode=0,isShuffle=false;
+let shuffledQueue=[],shuffleIndex=0,moveSongIndex=null;
+const audio=document.getElementById('audio');
+
+// EQUALIZER SETUP
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+const source=audioCtx.createMediaElementSource(audio);
+const filters=[60,230,910,4000,14000].map(freq=>{
+  const f=audioCtx.createBiquadFilter();
+  f.type='peaking';f.frequency.value=freq;f.Q.value=1;f.gain.value=0;
+  return f;
+});
+source.connect(filters[0]);
+for(let i=0;i<filters.length-1;i++)filters[i].connect(filters[i+1]);
+filters[filters.length-1].connect(audioCtx.destination);
+
+function saveData(){
+  localStorage.setItem('musikku_songs',JSON.stringify(songs));
+  localStorage.setItem('musikku_playlists',JSON.stringify(playlists));
+}
+function formatTime(s){if(isNaN(s))return'0:00';let m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+(sec<10?'0':'')+sec}
+
+function getFilteredSongs(){
+  let filtered=currentPlaylist=='all'?songs:songs.filter(s=>s.playlist==currentPlaylist);
+  const search=document.getElementById('searchBox').value.toLowerCase();
+  if(search)filtered=filtered.filter(s=>s.title.toLowerCase().includes(search)||s.artist.toLowerCase().includes(search));
+  return filtered;
+}
+
+function renderTabs(){
+  const tabs=document.getElementById('tabs');
+  tabs.innerHTML='';
+  playlists.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='tab'+(p.id==currentPlaylist?' active':'');
+    div.textContent=p.name;
+    div.addEventListener('click',()=>{currentPlaylist=p.id;renderTabs();renderSongs()});
+    div.addEventListener('contextmenu',e=>{e.preventDefault();if(p.id!='all')deletePlaylist(p.id)});
+    tabs.appendChild(div);
+  });
+}
+
+function renderSongs(){
+  const list=document.getElementById('songList');
+  const filtered=getFilteredSongs();
+  if(filtered.length==0){list.innerHTML='<div id="empty">Playlist kosong.<br>Upload musik ke playlist ini bang.</div>';return}
+  list.innerHTML='';
+  filtered.forEach((song)=>{
+    const i=songs.indexOf(song);
+    const div=document.createElement('div');div.className='song';
+    div.innerHTML=`
+      <img src="${song.cover||''}">
+      <div class="songInfo" data-index="${i}"><h3>${song.title}</h3><p>${song.artist}</p></div>
+      <button class="songMenu" data-index="${i}">⋮</button>
+      <div class="contextMenu" id="menu${i}">
+        <button onclick="showLyrics(${i})">📝 Lirik</button>
+        <button onclick="showMoveModal(${i})">📁 Pindah Playlist</button>
+        <button onclick="deleteSong(${i})">🗑️ Hapus</button>
+      </div>`;
+    list.appendChild(div);
+  });
+  document.querySelectorAll('.songInfo').forEach(el=>el.addEventListener('click',e=>playSong(+e.currentTarget.dataset.index)));
+  document.querySelectorAll('.songMenu').forEach(el=>el.addEventListener('click',e=>{
+    e.stopPropagation();
+    document.querySelectorAll('.contextMenu').forEach(m=>m.style.display='none');
+    document.getElementById('menu'+e.currentTarget.dataset.index).style.display='block';
+  }));
+}
+document.addEventListener('click',()=>document.querySelectorAll('.contextMenu').forEach(m=>m.style.display='none'));
+
+// EVENT LISTENERS
+document.getElementById('addMusicBtn').addEventListener('click',()=>document.getElementById('fileInput').click());
+document.getElementById('addPlaylistBtn').addEventListener('click',()=>document.getElementById('playlistModal').style.display='flex');
+document.getElementById('eqBtn').addEventListener('click',()=>document.getElementById('eqModal').style.display='flex');
+document.getElementById('miniMode').addEventListener('click',toggleMini);
+document.getElementById('prevBtn').addEventListener('click',prevSong);
+document.getElementById('playBtn').addEventListener('click',togglePlay);
+document.getElementById('nextBtn').addEventListener('click',nextSong);
+document.getElementById('loopBtn').addEventListener('click',toggleRepeat);
+document.getElementById('shuffleBtn').addEventListener('click',toggleShuffle);
+document.getElementById('searchBox').addEventListener('input',renderSongs);
+document.getElementById('progressBar').addEventListener('click',e=>{
+  const rect=e.currentTarget.getBoundingClientRect();
+  audio.currentTime=((e.clientX-rect.left)/rect.width)*audio.duration;
+});
+document.getElementById('playerCover').addEventListener('click',()=>showLyrics(currentIndex));
+
+// Modal Playlist
+document.getElementById('playlistSave').addEventListener('click',()=>{
+  const name=document.getElementById('playlistName').value.trim();
+  if(!name)return;
+  playlists.push({id:Date.now().toString(),name:name});
+  saveData();closeModal('playlistModal');renderTabs();
+});
+document.getElementById('playlistCancel').addEventListener('click',()=>closeModal('playlistModal'));
+
+// Modal Move
+document.getElementById('moveSave').addEventListener('click',()=>{
+  songs[moveSongIndex].playlist=document.getElementById('movePlaylistSelect').value;
+  saveData();closeModal('moveModal');renderSongs();
+});
+document.getElementById('moveCancel').addEventListener('click',()=>closeModal('moveModal'));
+
+// Modal Lyrics
+document.getElementById('lyricsEditBtn').addEventListener('click',()=>{
+  document.getElementById('lyricsView').style.display='none';
+  document.getElementById('lyricsEdit').style.display='block';
+  document.getElementById('lyricsEditBtn').style.display='none';
+  document.getElementById('lyricsSaveBtn').style.display='inline-block';
+  document.getElementById('lyricsEdit').value=songs[currentIndex].lyrics||'';
+});
+document.getElementById('lyricsSaveBtn').addEventListener('click',()=>{
+  songs[currentIndex].lyrics=document.getElementById('lyricsEdit').value;
+  saveData();
+  document.getElementById('lyricsView').style.display='block';
+  document.getElementById('lyricsEdit').style.display='none';
+  document.getElementById('lyricsEditBtn').style.display='inline-block';
+  document.getElementById('lyricsSaveBtn').style.display='none';
+  document.getElementById('lyricsView').textContent=songs[currentIndex].lyrics||'Belum ada lirik';
+});
+document.getElementById('lyricsCloseBtn').addEventListener('click',()=>closeModal('lyricsModal'));
+
+// Modal EQ
+document.querySelectorAll('#eqContainer input').forEach((slider,i)=>{
+  slider.addEventListener('input',e=>{
+    filters[i].gain.value=+e.target.value;
+    e.target.nextElementSibling.textContent=e.target.value+'dB';
+  });
+});
+document.getElementById('eqReset').addEventListener('click',()=>{
+  document.querySelectorAll('#eqContainer input').forEach((s,i)=>{
+    s.value=0;filters[i].gain.value=0;s.nextElementSibling.textContent='0dB';
+  });
+});
+document.getElementById('eqClose').addEventListener('click',()=>closeModal('eqModal'));
+
+document.getElementById('fileInput').addEventListener('change',function(e){
+  [...e.target.files].forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=function(ev){
+      songs.push({title:file.name.replace('.mp3',''),artist:'Local File',src:ev.target.result,cover:null,lyrics:'',playlist:currentPlaylist});
+      saveData();renderSongs();
+      if(songs.length==1)playSong(0);
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+function playSong(i){
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  if(songs.length==0)return;
+  currentIndex=i;const s=songs[i];
+  audio.src=s.src;audio.play();isPlaying=true;
+  document.getElementById('player').style.display='block';
+  document.getElementById('playerTitle').textContent=s.title;
+  document.getElementById('playerArtist').textContent=s.artist;
+  document.getElementById('playBtn').textContent='⏸️';
+  if(isShuffle)generateShuffleQueue();
+}
+
+function togglePlay(){isPlaying?audio.pause():audio.play()}
+audio.addEventListener('play',()=>{isPlaying=true;document.getElementById('playBtn').textContent='⏸️'});
+audio.addEventListener('pause',()=>{isPlaying=false;document.getElementById('playBtn').textContent='▶️'});
+audio.addEventListener('timeupdate',()=>{
+  if(audio.duration){
+    document.getElementById('progress').style.width=(audio.currentTime/audio.duration*100)+'%';
+    document.getElementById('currentTime').textContent=formatTime(audio.currentTime);
+    document.getElementById('duration').textContent=formatTime(audio.duration);
+  }
+});
+
+function getNextSong(){
+  let filtered=getFilteredSongs();
+  if(filtered.length==0)return -1;
+  if(isShuffle){
+    shuffleIndex=(shuffleIndex+1)%shuffledQueue.length;
+    return shuffledQueue[shuffleIndex];
+  }
+  let idx=filtered.indexOf(songs[currentIndex]);
+  return songs.indexOf(filtered[(idx+1)%filtered.length]);
+}
+
+audio.addEventListener('ended',()=>{
+  if(repeatMode==2){audio.currentTime=0;audio.play();return}
+  let next=getNextSong();
+  if(next==-1)return;
+  if(repeatMode==0){
+    let filtered=getFilteredSongs();
+    let idx=filtered.indexOf(songs[currentIndex]);
+    if(idx==filtered.length-1){isPlaying=false;document.getElementById('playBtn').textContent='▶️';return}
+  }
+  playSong(next);
+});
+
+function nextSong(){let next=getNextSong();if(next!=-1)playSong(next)}
+function prevSong(){
+  let filtered=getFilteredSongs();
+  if(filtered.length==0)return;
+  if(isShuffle){
+    shuffleIndex=(shuffleIndex-1+shuffledQueue.length)%shuffledQueue.length;
+    playSong(shuffledQueue[shuffleIndex]);
+  }else{
+    let idx=filtered.indexOf(songs[currentIndex]);
+    idx=(idx-1+filtered.length)%filtered.length;
+    playSong(songs.indexOf(filtered[idx]));
+  }
+}
+function toggleRepeat(){
+  repeatMode=(repeatMode+1)%3;
+  const btn=document.getElementById('loopBtn');
+  if(repeatMode==0){btn.textContent='🔁';btn.classList.remove('active');btn.title='Repeat Off'}
+  if(repeatMode==1){btn.textContent='🔁';btn.classList.add('active');btn.title='Repeat Playlist'}
+  if(repeatMode==2){btn.textContent='🔂';btn.classList.add('active');btn.title='Repeat 1 Song'}
+}
+function toggleShuffle(){
+  isShuffle=!isShuffle;
+  document.getElementById('shuffleBtn').classList.toggle('active',isShuffle);
+  if(isShuffle)generateShuffleQueue();
+}
+function generateShuffleQueue(){
+  let filtered=getFilteredSongs();
+  shuffledQueue=filtered.map(s=>songs.indexOf(s)).sort(()=>Math.random()-0.5);
+  shuffleIndex=shuffledQueue.indexOf(currentIndex);
+}
+function deleteSong(i){
+  if(i==currentIndex){audio.pause();document.getElementById('player').style.display='none'}
+  songs.splice(i,1);saveData();renderSongs();
+}
+function showMoveModal(i){
+  moveSongIndex=i;
+  const select=document.getElementById('movePlaylistSelect');
+  select.innerHTML=playlists.map(p=>`<option value="${p.id}" ${songs[i].playlist==p.id?'selected':''}>${p.name}</option>`).join('');
+  document.getElementById('moveModal').style.display='flex';
+}
+function showLyrics(i){
+  document.getElementById('lyricsTitle').textContent=songs[i].title;
+  document.getElementById('lyricsView').textContent=songs[i].lyrics||'Belum ada lirik';
+  document.getElementById('lyricsView').style.display='block';
+  document.getElementById('lyricsEdit').style.display='none';
+  document.getElementById('lyricsEditBtn').style.display='inline-block';
+  document.getElementById('lyricsSaveBtn').style.display='none';
+  document.getElementById('lyricsModal').style.display='flex';
+}
+function closeModal(id){document.getElementById(id).style.display='none'}
+function deletePlaylist(id){
+  if(confirm('Hapus playlist ini? Lagu nggak ikut kehapus')){
+    playlists=playlists.filter(p=>p.id!=id);
+    songs.forEach(s=>{if(s.playlist==id)s.playlist='all'});
+    currentPlaylist='all';saveData();renderTabs();renderSongs();
+  }
+}
+function toggleMini(){
+  const p=document.getElementById('player');
+  if(p.style.height=='60px'){p.style.height='auto';p.style.opacity='1'}
+  else{p.style.height='60px';p.style.opacity='0.9'}
+}
+
+renderTabs();renderSongs();
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+</script>
+</body>
+</html>
